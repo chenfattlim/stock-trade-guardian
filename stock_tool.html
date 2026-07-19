@@ -257,14 +257,14 @@ function checkStatus() {
         } else if (maxHighPrice >= currentPltValue) {
             boxClass = 'status-half';
             htmlContent = `
-                <div class="status-title">⚠️ 已達平台：獲利了結 50%</div>
-                <div><strong>${displayTitle}</strong> 最新價 <strong>${currentPrice}</strong> 已成功站上 3/8 平台 <strong>第 ${currentLvlNum} 階減碼平台 (${currentPltValue})</strong>。<br><br>👉 依據策略：<strong>請在此刻獲利了結 50%！</strong><br>剩餘部位續抱，目標觸及上方 <strong>下一階目標 (${nextFibValue || '無上限'})</strong> 時【全數獲利】。</div>
+                <div class="status-title">⚠️ 已達此階段平台</div>
+                <div><strong>${displayTitle}</strong> 最新價 <strong>${currentPrice}</strong> 已成功站上此階段平台 <strong>第 ${currentLvlNum} 階平台 (${currentPltValue})</strong>。<br><br>👉 依據策略：<strong>觀察後續是否有守住，也可先獲利了結50%</strong><br>剩餘部位續抱，目標觸及上方 <strong>下一階目標 (${nextFibValue || '無上限'})</strong> 時【全數獲利】。</div>
             `;
         } else {
             boxClass = 'status-hold';
             htmlContent = `
                 <div class="status-title">🎯 進入新階層：請依策略動作</div>
-                <div><strong>${displayTitle}</strong> 最新價 <strong>${currentPrice}</strong> 目前站上 <strong>第 ${currentLvlNum} 階支撐 (${currentFibValue})</strong>。<br><br><strong>【下一步目標】</strong><br>• 往上碰到 <strong>第 ${currentLvlNum} 階減碼平台 (${currentPltValue})</strong> 👉 獲利了結 50%<br>• 往下碰到 <strong>第 ${currentLvlNum} 階支撐 (${currentFibValue})</strong> 👉 停損出清</div>
+                <div><strong>${displayTitle}</strong> 最新價 <strong>${currentPrice}</strong> 目前站上 <strong>第 ${currentLvlNum} 階支撐 (${currentFibValue})</strong>。<br><br><strong>【下一步目標】</strong><br>• 往上碰到 <strong>第 ${currentLvlNum} 階平台 (${currentPltValue})</strong> 👉 觀察是否後續有守住<br>• 往下碰到 <strong>第 ${currentLvlNum} 階支撐 (${currentFibValue})</strong> 👉 停損出清</div>
             `;
         }
     }
