@@ -15,7 +15,7 @@
         label { display: block; font-weight: 600; margin-bottom: 8px; color: #475569; }
         .input-row { display: flex; gap: 10px; }
         input { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
-        .btn-fetch { background-color: #0f172a; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-fetch { background-color: #0f172a; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; font-size: 14px; white-space: nowrap; }
         .btn-fetch:hover { background-color: #1e293b; }
         button.btn-main { width: 100%; padding: 14px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
         button.btn-main:hover { background-color: #1d4ed8; }
@@ -35,13 +35,13 @@
 
 <div class="container">
     <h2>移動停利監控面板</h2>
-    <div class="subtitle">全網格視角 (含上下階防線與平台) v5.1</div>
+    <div class="subtitle">全網格視角 (含上下階防線與平台) v5.2</div>
     
     <div class="form-group">
         <label for="stockInput">股票代號或名稱</label>
         <div class="input-row">
-            <input type="text" id="stockInput" list="stockOptions" placeholder="輸入股號或名稱，例如: 2330 或 台積電" oninput="loadSavedMaxHigh()" onchange="loadSavedMaxHigh()">
-            <datalist id="stockOptions"></datalist>
+            <!-- 移除 datalist，避免手機版彈出選單擋住打字 -->
+            <input type="text" id="stockInput" placeholder="請輸入股號或名稱 (如: 2330 或 台積電)" oninput="loadSavedMaxHigh()" onchange="loadSavedMaxHigh()">
             <button class="btn-fetch" onclick="fetchLivePriceAndChart()">抓取 6個月 K線</button>
         </div>
         <div id="stockNameDisplay"></div>
@@ -74,31 +74,26 @@ let tvChart = null;
 let candlestickSeries = null;
 let priceLines = []; 
 
-// 網頁載入後，自動將 fiboData 中的股票清單填入下拉選單 datalist
-window.addEventListener('DOMContentLoaded', () => {
-    const dataList = document.getElementById('stockOptions');
-    for (const [id, info] of Object.entries(fiboData)) {
-        const option = document.createElement('option');
-        const name = info.stock_name || '';
-        option.value = `${id} ${name}`.trim();
-        dataList.appendChild(option);
-    }
-});
-
-// 輔助函式：從輸入框字串提取出純數字股號
+// 智慧解析：自動將使用者打的「文字/數字」轉為真正的股票代號
 function getCleanStockId() {
     const rawVal = document.getElementById('stockInput').value.trim();
     if (!rawVal) return '';
     
-    const parts = rawVal.split(' ');
-    if (fiboData[parts[0]]) return parts[0];
+    // 情況 A：如果直接輸入數字股號，且存在於資料中
     if (fiboData[rawVal]) return rawVal;
     
+    // 情況 B：如果包含空格 (例如手動貼上 "2330 台積電")
+    const parts = rawVal.split(' ');
+    if (fiboData[parts[0]]) return parts[0];
+    
+    // 情況 C：如果直接打中文名稱 (例如 "台積電" 或 "鴻海")，自動反查股號
     for (const [id, info] of Object.entries(fiboData)) {
-        if (info.stock_name && info.stock_name === rawVal) {
+        if (info.stock_name && info.stock_name.trim() === rawVal) {
             return id;
         }
     }
+    
+    // 若找不到精準匹配，回傳前段輸入字串交給 API 試驗
     return parts[0];
 }
 
@@ -200,10 +195,8 @@ async function fetchLivePriceAndChart() {
             document.getElementById('maxHighPrice').value = maxClose.toFixed(2);
             localStorage.setItem('max_high_6m_' + stockId, maxClose.toFixed(2));
             
-            // 1. 先畫出 K 線圖
+            // 畫出 K 線並自動執行第一次分析繪圖
             renderChart(chartData);
-            
-            // 2. 🌟 自動觸發分析：直接把畫線與文字報告一次做好！
             checkStatus();
             
         } else {
@@ -233,7 +226,6 @@ function checkStatus() {
         return;
     }
     
-    // 依據最新的最高價判斷當前所在階層
     let currentLvlNum = 0;
     for (let i = 10; i >= 1; i--) {
         if (maxHighPrice >= stock[`fib_lvl_${i}`]) {
@@ -246,7 +238,7 @@ function checkStatus() {
     let htmlContent = '';
     let boxClass = '';
     
-    // --- 準備所有網格的防線數值 ---
+    // --- 準備防線數值 ---
     const prevFibValue = currentLvlNum > 1 ? stock[`fib_lvl_${currentLvlNum - 1}`] : null;
     const prevPltValue = currentLvlNum > 1 ? stock[`plt_lvl_${currentLvlNum - 1}`] : null;
     
@@ -256,22 +248,18 @@ function checkStatus() {
     const nextFibValue = stock[`fib_lvl_${currentLvlNum + 1}`] || null;
     const nextPltValue = stock[`plt_lvl_${currentLvlNum + 1}`] || null;
     
-    // --- 在圖表上更新/重新繪製水平線 ---
+    // --- 重繪/更新 K 線上的線條 ---
     if (candlestickSeries) {
-        // 先清除舊的防線
         priceLines.forEach(line => candlestickSeries.removePriceLine(line));
         priceLines = [];
         
         if (currentLvlNum > 0) {
-            // 1. 上一階防線 (灰色虛線)
             if (prevFibValue) priceLines.push(candlestickSeries.createPriceLine({ price: prevFibValue, color: '#94a3b8', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `上階支撐` }));
             if (prevPltValue) priceLines.push(candlestickSeries.createPriceLine({ price: prevPltValue, color: '#cbd5e1', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `上階平台` }));
             
-            // 2. 當前階防線 (紅/黃實線，重點防守區)
             priceLines.push(candlestickSeries.createPriceLine({ price: currentFibValue, color: '#ef5350', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: `當前停損` }));
             priceLines.push(candlestickSeries.createPriceLine({ price: currentPltValue, color: '#f59e0b', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: `半數停利` }));
             
-            // 3. 下一階防線 (綠色系)
             if (nextFibValue) priceLines.push(candlestickSeries.createPriceLine({ price: nextFibValue, color: '#10b981', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: `全數獲利` }));
             if (nextPltValue) priceLines.push(candlestickSeries.createPriceLine({ price: nextPltValue, color: '#6ee7b7', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `下階平台` }));
         }
@@ -307,7 +295,6 @@ function checkStatus() {
         }
     }
     
-    // --- 面板下方顯示價位表 ---
     htmlContent += `
         <div class="details">
             <strong>個股基準資訊：</strong><br>
