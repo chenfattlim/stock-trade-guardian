@@ -13,9 +13,27 @@
         .subtitle { text-align: center; color: #64748b; font-size: 14px; margin-bottom: 25px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: 600; margin-bottom: 8px; color: #475569; }
-        .input-row { display: flex; gap: 10px; }
-        input { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
-        .btn-fetch { background-color: #0f172a; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; font-size: 14px; white-space: nowrap; }
+        
+        .input-row { display: flex; gap: 10px; align-items: flex-start; }
+        
+        /* 🌟 自訂智慧搜尋選單的樣式 */
+        .autocomplete-wrapper { position: relative; flex: 1; }
+        .autocomplete-wrapper input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
+        .autocomplete-items {
+            position: absolute; border: 1px solid #cbd5e1; border-top: none;
+            z-index: 99; top: 100%; left: 0; right: 0; padding: 0; margin: 0;
+            list-style: none; background-color: #fff; max-height: 250px;
+            overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 0 0 6px 6px; display: none;
+        }
+        .autocomplete-items li {
+            padding: 12px 15px; cursor: pointer; background-color: #fff;
+            border-bottom: 1px solid #f1f5f9; font-size: 15.5px; color: #333;
+        }
+        .autocomplete-items li:hover { background-color: #e2e8f0; color: #1e40af; font-weight: bold; }
+        .autocomplete-items li:last-child { border-bottom: none; }
+        
+        .btn-fetch { background-color: #0f172a; color: white; border: none; padding: 12px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; white-space: nowrap; height: 45px; }
         .btn-fetch:hover { background-color: #1e293b; }
         button.btn-main { width: 100%; padding: 14px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
         button.btn-main:hover { background-color: #1d4ed8; }
@@ -25,9 +43,24 @@
         .status-half { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .status-info { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
         .status-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        
+        .advice-box { margin-top: 12px; padding: 12px; background: rgba(255,255,255,0.6); border-radius: 6px; font-size: 14.5px; line-height: 1.6; }
+        .advice-box div { margin-bottom: 6px; }
+        .advice-box div:last-child { margin-bottom: 0; }
+        
         .details { margin-top: 15px; font-size: 14px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px; line-height: 1.6; color: #475569; }
         .loading { color: #2563eb; font-size: 14px; margin-top: 5px; display: none; }
-        #tvchart { width: 100%; height: 350px; margin-top: 20px; display: none; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+        
+        /* 圖表與鼠標即時資訊區塊 */
+        .chart-wrapper { position: relative; width: 100%; margin-top: 20px; display: none; }
+        #tvchart { width: 100%; height: 350px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+        #chartTooltip { 
+            position: absolute; right: 12px; top: 12px; z-index: 10; 
+            background: rgba(255, 255, 255, 0.9); padding: 6px 12px; 
+            border-radius: 6px; font-size: 13px; font-weight: 600; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08); pointer-events: none;
+            color: #1e293b; border: 1px solid #cbd5e1;
+        }
         #stockNameDisplay { margin-top: 10px; font-size: 20px; font-weight: bold; color: #1e40af; }
     </style>
 </head>
@@ -35,21 +68,28 @@
 
 <div class="container">
     <h2>移動停利監控面板</h2>
-    <div class="subtitle">全網格視角 (含上下階防線與平台) v5.2</div>
+    <div class="subtitle"> 停利停損 K線 工具</div>
     
     <div class="form-group">
         <label for="stockInput">股票代號或名稱</label>
         <div class="input-row">
-            <!-- 移除 datalist，避免手機版彈出選單擋住打字 -->
-            <input type="text" id="stockInput" placeholder="請輸入股號或名稱 (如: 2330 或 台積電)" oninput="loadSavedMaxHigh()" onchange="loadSavedMaxHigh()">
+            <!-- 🌟 升級為自訂智慧搜尋外掛 -->
+            <div class="autocomplete-wrapper">
+                <!-- 取消原生 autocomplete，改用我們自訂的 -->
+                <input type="text" id="stockInput" placeholder="輸入股號/名稱 (如: 南亞)" autocomplete="off">
+                <ul id="autocomplete-list" class="autocomplete-items"></ul>
+            </div>
             <button class="btn-fetch" onclick="fetchLivePriceAndChart()">抓取 6個月 K線</button>
         </div>
         <div id="stockNameDisplay"></div>
         <div id="loadingText" class="loading">正在向 FinMind 撈取近 6 個月歷史資料...</div>
     </div>
     
-    <!-- TradingView K線圖容器 -->
-    <div id="tvchart"></div>
+    <!-- TradingView K線圖與鼠標 Hover 顯示容器 -->
+    <div class="chart-wrapper" id="chartWrapper">
+        <div id="chartTooltip">指引：將鼠標移至 K 線上查看即時幅度和關卡</div>
+        <div id="tvchart"></div>
+    </div>
     <br>
 
     <div class="form-group">
@@ -73,27 +113,84 @@ const fiboData = {"50": {"close": 46.6, "fib_lvl_1": 46.6, "fib_lvl_2": 93.2, "f
 let tvChart = null; 
 let candlestickSeries = null;
 let priceLines = []; 
+let rawChartQuotes = []; 
 
-// 智慧解析：自動將使用者打的「文字/數字」轉為真正的股票代號
+// 🌟 自訂智慧搜尋邏輯 (Autocomplete)
+document.addEventListener("DOMContentLoaded", function() {
+    const inputEl = document.getElementById("stockInput");
+    const listEl = document.getElementById("autocomplete-list");
+
+    // 監聽使用者打字
+    inputEl.addEventListener("input", function() {
+        const val = this.value.trim();
+        listEl.innerHTML = ""; // 清空之前的搜尋結果
+        
+        if (!val) {
+            listEl.style.display = "none";
+            return;
+        }
+
+        let matches = [];
+        // 走訪所有股票資料比對
+        for (const [id, info] of Object.entries(fiboData)) {
+            const name = info.stock_name || "";
+            // 如果股號或股票名稱包含使用者打的字，就加入建議清單
+            if (id.includes(val) || name.includes(val)) {
+                matches.push({ id: id, name: name });
+            }
+        }
+
+        // 最多顯示 15 筆，避免畫面過長
+        matches = matches.slice(0, 15);
+
+        if (matches.length > 0) {
+            listEl.style.display = "block";
+            matches.forEach(match => {
+                const li = document.createElement("li");
+                // 將匹配的部分用粗體顯示 (如果剛好是開頭)
+                li.innerText = `${match.id} ${match.name}`;
+                
+                // 點擊清單項目時的動作
+                li.addEventListener("click", function() {
+                    inputEl.value = `${match.id} ${match.name}`;
+                    listEl.style.display = "none"; // 隱藏選單
+                    loadSavedMaxHigh(); // 自動載入歷史設定
+                });
+                listEl.appendChild(li);
+            });
+        } else {
+            listEl.style.display = "none";
+        }
+    });
+
+    // 點擊畫面其他地方時，自動隱藏選單
+    document.addEventListener("click", function(e) {
+        if (e.target !== inputEl) {
+            listEl.style.display = "none";
+        }
+    });
+    
+    // 如果使用者不是點擊選單，而是手動打完字按 Enter 或移開游標
+    inputEl.addEventListener("change", function() {
+        loadSavedMaxHigh();
+    });
+});
+
+
 function getCleanStockId() {
     const rawVal = document.getElementById('stockInput').value.trim();
     if (!rawVal) return '';
     
-    // 情況 A：如果直接輸入數字股號，且存在於資料中
     if (fiboData[rawVal]) return rawVal;
     
-    // 情況 B：如果包含空格 (例如手動貼上 "2330 台積電")
     const parts = rawVal.split(' ');
     if (fiboData[parts[0]]) return parts[0];
     
-    // 情況 C：如果直接打中文名稱 (例如 "台積電" 或 "鴻海")，自動反查股號
     for (const [id, info] of Object.entries(fiboData)) {
         if (info.stock_name && info.stock_name.trim() === rawVal) {
             return id;
         }
     }
-    
-    // 若找不到精準匹配，回傳前段輸入字串交給 API 試驗
     return parts[0];
 }
 
@@ -114,19 +211,38 @@ function loadSavedMaxHigh() {
 }
 
 function renderChart(data) {
+    const chartWrapper = document.getElementById('chartWrapper');
     const chartContainer = document.getElementById('tvchart');
+    const tooltip = document.getElementById('chartTooltip');
+    
     chartContainer.innerHTML = ''; 
-    chartContainer.style.display = 'block';
+    chartWrapper.style.display = 'block';
 
     tvChart = LightweightCharts.createChart(chartContainer, {
         width: chartContainer.clientWidth,
         height: 350,
         layout: { background: { color: '#ffffff' }, textColor: '#333' },
         grid: { vertLines: { color: '#f0f3fa' }, horzLines: { color: '#f0f3fa' } },
-        timeScale: { borderColor: '#cccccc' }
+        timeScale: { borderColor: '#cccccc' },
+        leftPriceScale: { visible: true, borderColor: '#cccccc' },
+        rightPriceScale: { visible: false },
+        
+        // 鎖定縮放與拖曳
+        handleScale: {
+            mouseWheel: false,
+            pinch: false,
+            axisPressedMouseMove: { time: false, price: false }
+        },
+        handleScroll: {
+            mouseWheel: false,
+            pressedMouseMove: false,
+            horzTouchDrag: false,
+            vertTouchDrag: false
+        }
     });
 
     candlestickSeries = tvChart.addCandlestickSeries({
+        priceScaleId: 'left',
         upColor: '#ef5350',      
         downColor: '#26a69a',    
         borderVisible: false,
@@ -137,6 +253,23 @@ function renderChart(data) {
     candlestickSeries.setData(data);
     tvChart.timeScale().fitContent(); 
     priceLines = []; 
+
+    tvChart.subscribeCrosshairMove(param => {
+        if (!param || !param.time || !param.seriesData.get(candlestickSeries)) {
+            const lastData = rawChartQuotes[rawChartQuotes.length - 1];
+            if(lastData) {
+                tooltip.innerHTML = `📅 ${lastData.time} | 收盤: <b>${lastData.close}</b> | 漲跌: <span style="color:${lastData.change >= 0 ? '#ef5350':'#26a69a'}">${lastData.changePct}</span>`;
+            }
+            return;
+        }
+
+        const matchData = rawChartQuotes.find(q => q.time === param.time);
+        if (matchData) {
+            const color = matchData.change >= 0 ? '#ef5350' : '#26a69a';
+            const sign = matchData.change >= 0 ? '+' : '';
+            tooltip.innerHTML = `📅 ${matchData.time} | 收盤: <b>${matchData.close}</b> | 較前日: <span style="color:${color}">${sign}${matchData.change.toFixed(2)} (${sign}${matchData.changePct})</span>`;
+        }
+    });
 }
 
 async function fetchLivePriceAndChart() {
@@ -158,6 +291,7 @@ async function fetchLivePriceAndChart() {
     let livePrice = 0;
     let maxClose = 0;
     let chartData = [];
+    rawChartQuotes = [];
     
     try {
         const endDate = new Date();
@@ -182,20 +316,28 @@ async function fetchLivePriceAndChart() {
                 maxClose = Math.max(maxClose, closePrice);
                 livePrice = closePrice;
                 
-                chartData.push({
+                let prevClose = i > 0 ? quotes[i - 1].close : daily.open;
+                let change = closePrice - prevClose;
+                let changePct = prevClose > 0 ? ((change / prevClose) * 100).toFixed(2) + '%' : '0.00%';
+
+                const item = {
                     time: daily.date,
                     open: daily.open,
                     high: daily.max,
                     low: daily.min,
-                    close: daily.close
-                });
+                    close: daily.close,
+                    change: change,
+                    changePct: changePct
+                };
+                
+                chartData.push(item);
+                rawChartQuotes.push(item);
             }
             
             document.getElementById('currentPrice').value = livePrice.toFixed(2);
             document.getElementById('maxHighPrice').value = maxClose.toFixed(2);
             localStorage.setItem('max_high_6m_' + stockId, maxClose.toFixed(2));
             
-            // 畫出 K 線並自動執行第一次分析繪圖
             renderChart(chartData);
             checkStatus();
             
@@ -238,7 +380,6 @@ function checkStatus() {
     let htmlContent = '';
     let boxClass = '';
     
-    // --- 準備防線數值 ---
     const prevFibValue = currentLvlNum > 1 ? stock[`fib_lvl_${currentLvlNum - 1}`] : null;
     const prevPltValue = currentLvlNum > 1 ? stock[`plt_lvl_${currentLvlNum - 1}`] : null;
     
@@ -248,20 +389,24 @@ function checkStatus() {
     const nextFibValue = stock[`fib_lvl_${currentLvlNum + 1}`] || null;
     const nextPltValue = stock[`plt_lvl_${currentLvlNum + 1}`] || null;
     
-    // --- 重繪/更新 K 線上的線條 ---
+    const baseLineOpts = { 
+        axisLabelVisible: true, 
+        lineStyle: 2 
+    };
+    
     if (candlestickSeries) {
         priceLines.forEach(line => candlestickSeries.removePriceLine(line));
         priceLines = [];
         
         if (currentLvlNum > 0) {
-            if (prevFibValue) priceLines.push(candlestickSeries.createPriceLine({ price: prevFibValue, color: '#94a3b8', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `上階支撐` }));
-            if (prevPltValue) priceLines.push(candlestickSeries.createPriceLine({ price: prevPltValue, color: '#cbd5e1', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `上階平台` }));
+            if (prevFibValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: prevFibValue, color: '#94a3b8', lineWidth: 1, title: `上階關卡` }));
+            if (prevPltValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: prevPltValue, color: '#cbd5e1', lineWidth: 1, title: `上階平台` }));
             
-            priceLines.push(candlestickSeries.createPriceLine({ price: currentFibValue, color: '#ef5350', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: `當前停損` }));
-            priceLines.push(candlestickSeries.createPriceLine({ price: currentPltValue, color: '#f59e0b', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: `半數停利` }));
+            priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: currentFibValue, color: '#ef5350', lineWidth: 2, title: `當前關卡` }));
+            priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: currentPltValue, color: '#f59e0b', lineWidth: 2, title: `當前平台` }));
             
-            if (nextFibValue) priceLines.push(candlestickSeries.createPriceLine({ price: nextFibValue, color: '#10b981', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: `全數獲利` }));
-            if (nextPltValue) priceLines.push(candlestickSeries.createPriceLine({ price: nextPltValue, color: '#6ee7b7', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: `下階平台` }));
+            if (nextFibValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: nextFibValue, color: '#10b981', lineWidth: 2, title: `下階關卡` }));
+            if (nextPltValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: nextPltValue, color: '#6ee7b7', lineWidth: 1, title: `下階平台` }));
         }
     }
     
@@ -271,26 +416,42 @@ function checkStatus() {
         boxClass = 'status-info';
         htmlContent = `
             <div class="status-title">提示：未突破基礎階層</div>
-            <div><strong>${displayTitle}</strong> 近六個月最高價 (${maxHighPrice}) 尚未超越第一階線 (${stock.fib_lvl_1})，未啟動停利機制。</div>
+            <div><strong>${displayTitle}</strong> 近期尚未超越第一階關卡 (${stock.fib_lvl_1})，趨勢尚不明朗。</div>
+            <div class="advice-box">
+                <div><strong>💼 【已有部位者】</strong>：股價仍在底部打底，請以波段最低點作為最終防線。</div>
+                <div><strong>👀 【空手觀望者】</strong>：多方尚未表態，建議等待突破第一階關卡後，再評估進場機會。</div>
+            </div>
         `;
     } else {
         if (currentPrice < currentFibValue) {
             boxClass = 'status-sell';
             htmlContent = `
-                <div class="status-title">❌ 跌破支撐：停損 / 全數出清</div>
-                <div><strong>${displayTitle}</strong> 最新價 <strong>${currentPrice}</strong> 已跌破當前區間防線 <strong>第 ${currentLvlNum} 階支撐 (${currentFibValue})</strong>。<br><br>👉 依據策略：<strong>請執行停損或全數出清，保護資金。</strong></div>
+                <div class="status-title">❌ 跌破當前關卡</div>
+                <div><strong>${displayTitle}</strong> 最新價 <strong>${currentPrice}</strong> 已跌破 <strong>第 ${currentLvlNum} 階關卡 (${currentFibValue})</strong>。</div>
+                <div class="advice-box">
+                    <div><strong>💼 【已有部位者】</strong>：已跌破防守線，建議依紀律執行停損或停利出清，保護資金。</div>
+                    <div><strong>👀 【空手觀望者】</strong>：目前走勢轉弱，支撐遭跌破，建議持續觀望，不宜冒然接刀。</div>
+                </div>
             `;
         } else if (maxHighPrice >= currentPltValue) {
             boxClass = 'status-half';
             htmlContent = `
-                <div class="status-title">⚠️ 已達此階段平台</div>
-                <div><strong>${displayTitle}</strong> 最新價 <strong>${currentPrice}</strong> 已成功站上此階段平台 <strong>第 ${currentLvlNum} 階平台 (${currentPltValue})</strong>。<br><br>👉 依據策略：<strong>觀察後續是否有守住，也可先獲利了結50%</strong><br>剩餘部位續抱，目標觸及上方 <strong>下一階目標 (${nextFibValue || '無上限'})</strong> 時【全數獲利】。</div>
+                <div class="status-title">⚠️ 已達當前平台</div>
+                <div><strong>${displayTitle}</strong> 最高曾觸及 <strong>第 ${currentLvlNum} 階平台 (${currentPltValue})</strong>，進入階段壓力區。</div>
+                <div class="advice-box">
+                    <div><strong>💼 【已有部位者】</strong>：可考量調節部分部位 (如獲利了結一半)，剩餘部位續抱，防守線維持不變。</div>
+                    <div><strong>👀 【空手觀望者】</strong>：價格已達短線目標，追高風險大，建議等待拉回測試關卡且有守住時再考慮。</div>
+                </div>
             `;
         } else {
             boxClass = 'status-hold';
             htmlContent = `
-                <div class="status-title">🎯 進入新階層：請依策略動作</div>
-                <div><strong>${displayTitle}</strong> 最新價 <strong>${currentPrice}</strong> 目前站上 <strong>第 ${currentLvlNum} 階支撐 (${currentFibValue})</strong>。<br><br><strong>【下一步目標】</strong><br>• 往上碰到 <strong>第 ${currentLvlNum} 階平台 (${currentPltValue})</strong> 👉 觀察是否後續有守住<br>• 往下碰到 <strong>第 ${currentLvlNum} 階支撐 (${currentFibValue})</strong> 👉 停損出清</div>
+                <div class="status-title">🎯 進入新階層：多方延續</div>
+                <div><strong>${displayTitle}</strong> 目前站上 <strong>第 ${currentLvlNum} 階關卡 (${currentFibValue})</strong>，趨勢維持正向。</div>
+                <div class="advice-box">
+                    <div><strong>💼 【已有部位者】</strong>：請以上移後的「當前關卡」作為最新防守線，未跌破前可安心續抱。</div>
+                    <div><strong>👀 【空手觀望者】</strong>：若價格有拉回測試「當前關卡」且未跌破，為風險利潤比相對合理的試單點。</div>
+                </div>
             `;
         }
     }
@@ -302,10 +463,10 @@ function checkStatus() {
             • 當前所屬區間: <strong>第 ${currentLvlNum || 0} 階</strong><br>
             <br>
             <strong>📈 鄰近網格價位總覽 (由高至低)：</strong><br>
-            ${nextPltValue ? `<span style="color:#6ee7b7;">• 下一階：目標 (${nextFibValue}) / 平台 (${nextPltValue})</span><br>` : ''}
-            ${(!nextPltValue && nextFibValue) ? `<span style="color:#10b981;">• 下一階：目標 (${nextFibValue})</span><br>` : ''}
-            <span style="color:#ea580c; font-weight:bold;">• 當前階：平台 (${currentPltValue}) / 支撐 (${currentFibValue}) 👈 </span><br>
-            ${prevFibValue ? `<span style="color:#64748b;">• 上一階：平台 (${prevPltValue}) / 支撐 (${prevFibValue})</span><br>` : ''}
+            ${nextPltValue ? `<span style="color:#6ee7b7;">• 下一階：關卡 (${nextFibValue}) / 平台 (${nextPltValue})</span><br>` : ''}
+            ${(!nextPltValue && nextFibValue) ? `<span style="color:#10b981;">• 下一階：關卡 (${nextFibValue})</span><br>` : ''}
+            <span style="color:#ea580c; font-weight:bold;">• 當前階：平台 (${currentPltValue}) / 關卡 (${currentFibValue}) 👈 </span><br>
+            ${prevFibValue ? `<span style="color:#64748b;">• 上一階：平台 (${prevPltValue}) / 關卡 (${prevFibValue})</span><br>` : ''}
         </div>
     `;
     
