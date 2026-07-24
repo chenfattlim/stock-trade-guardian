@@ -209,7 +209,6 @@ function renderChart(data) {
         layout: { background: { color: '#ffffff' }, textColor: '#333' },
         grid: { 
             vertLines: { color: '#f0f3fa' }, 
-            // 🌟 關閉背景的水平網格線，避免與輔助線混淆
             horzLines: { visible: false } 
         },
         timeScale: { borderColor: '#cccccc' },
@@ -359,31 +358,36 @@ function checkStatus() {
     let htmlContent = '';
     let boxClass = '';
     
+    // 🌟 上上階數據 (currentLvlNum 大於 2 才有)
+    const prev2FibValue = currentLvlNum > 2 ? stock[`fib_lvl_${currentLvlNum - 2}`] : null;
+    const prev2PltValue = currentLvlNum > 2 ? stock[`plt_lvl_${currentLvlNum - 2}`] : null;
+    const prev2Sub2PltValue = currentLvlNum > 2 ? stock[`sub2_plt_lvl_${currentLvlNum - 2}`] : null;
+    const prev2SubPltValue = currentLvlNum > 2 ? stock[`sub_plt_lvl_${currentLvlNum - 2}`] : null;
+
+    // 上一階數據
     const prevFibValue = currentLvlNum > 1 ? stock[`fib_lvl_${currentLvlNum - 1}`] : null;
     const prevPltValue = currentLvlNum > 1 ? stock[`plt_lvl_${currentLvlNum - 1}`] : null;
-    // 🌟 抓取上一階的 2/8 與 5/8 輔助線
     const prevSub2PltValue = currentLvlNum > 1 ? stock[`sub2_plt_lvl_${currentLvlNum - 1}`] : null;
     const prevSubPltValue = currentLvlNum > 1 ? stock[`sub_plt_lvl_${currentLvlNum - 1}`] : null;
     
+    // 當前階數據
     const currentFibValue = stock[`fib_lvl_${currentLvlNum}`];
     const currentPltValue = stock[`plt_lvl_${currentLvlNum}`];
-    // 🌟 抓取當前階的 2/8 與 5/8 輔助線
     const currentSub2PltValue = stock[`sub2_plt_lvl_${currentLvlNum}`];
     const currentSubPltValue = stock[`sub_plt_lvl_${currentLvlNum}`];
     
+    // 下一階數據
     const nextFibValue = stock[`fib_lvl_${currentLvlNum + 1}`] || null;
     const nextPltValue = stock[`plt_lvl_${currentLvlNum + 1}`] || null;
-    // 🌟 抓取下一階的 2/8 與 5/8 輔助線
     const nextSub2PltValue = stock[`sub2_plt_lvl_${currentLvlNum + 1}`] || null;
     const nextSubPltValue = stock[`sub_plt_lvl_${currentLvlNum + 1}`] || null;
     
     const baseLineOpts = { axisLabelVisible: true, lineStyle: 2 };
     
-    // 定義次級防線樣式 (無標籤、極細虛點)
     const thinLineOpts = { 
         axisLabelVisible: false,      
         axisLabelLeftVisible: false,  
-        lineStyle: 1, // 1=Dotted
+        lineStyle: 1, 
         color: '#cbd5e1', 
         lineWidth: 1 
     };
@@ -393,7 +397,10 @@ function checkStatus() {
         priceLines = [];
         
         if (currentLvlNum > 0) {
-            // 🌟 畫輔助線 (2/8 與 5/8 放在較底層)
+            // 🌟 畫所有輔助線 (放在較底層，包含上上階)
+            if (prev2Sub2PltValue) priceLines.push(candlestickSeries.createPriceLine({ ...thinLineOpts, price: prev2Sub2PltValue }));
+            if (prev2SubPltValue) priceLines.push(candlestickSeries.createPriceLine({ ...thinLineOpts, price: prev2SubPltValue }));
+
             if (prevSub2PltValue) priceLines.push(candlestickSeries.createPriceLine({ ...thinLineOpts, price: prevSub2PltValue }));
             if (prevSubPltValue) priceLines.push(candlestickSeries.createPriceLine({ ...thinLineOpts, price: prevSubPltValue }));
             
@@ -403,13 +410,20 @@ function checkStatus() {
             if (nextSub2PltValue) priceLines.push(candlestickSeries.createPriceLine({ ...thinLineOpts, price: nextSub2PltValue }));
             if (nextSubPltValue) priceLines.push(candlestickSeries.createPriceLine({ ...thinLineOpts, price: nextSubPltValue }));
 
-            // 畫主防線與平台 (放在上層並顯示標籤)
+            // 🌟 畫主防線與平台 (放在上層並顯示標籤)
+            // 上上階 (使用較淺的灰色)
+            if (prev2FibValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: prev2FibValue, color: '#94a3b8', lineWidth: 1, title: `上上階關卡` }));
+            if (prev2PltValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: prev2PltValue, color: '#cbd5e1', lineWidth: 1, title: `上上階平台` }));
+
+            // 上階
             if (prevFibValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: prevFibValue, color: '#94a3b8', lineWidth: 1, title: `上階關卡` }));
             if (prevPltValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: prevPltValue, color: '#cbd5e1', lineWidth: 1, title: `上階平台` }));
             
+            // 當前階
             priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: currentFibValue, color: '#ef5350', lineWidth: 2, title: `當前關卡` }));
             priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: currentPltValue, color: '#f59e0b', lineWidth: 2, title: `當前平台` }));
             
+            // 下階
             if (nextFibValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: nextFibValue, color: '#10b981', lineWidth: 2, title: `下階關卡` }));
             if (nextPltValue) priceLines.push(candlestickSeries.createPriceLine({ ...baseLineOpts, price: nextPltValue, color: '#6ee7b7', lineWidth: 1, title: `下階平台` }));
         }
@@ -461,6 +475,7 @@ function checkStatus() {
         }
     }
     
+    // 🌟 在價位總覽中加入上上階
     htmlContent += `
         <div class="details">
             <strong>個股基準資訊：</strong><br>
@@ -472,6 +487,7 @@ function checkStatus() {
             ${(!nextPltValue && nextFibValue) ? `<span style="color:#10b981;">• 下一階：關卡 (${nextFibValue})</span><br>` : ''}
             <span style="color:#ea580c; font-weight:bold;">• 當前階：平台 (${currentPltValue}) / 關卡 (${currentFibValue}) 👈 </span><br>
             ${prevFibValue ? `<span style="color:#64748b;">• 上一階：平台 (${prevPltValue}) / 關卡 (${prevFibValue})</span><br>` : ''}
+            ${prev2FibValue ? `<span style="color:#94a3b8;">• 上上階：平台 (${prev2PltValue}) / 關卡 (${prev2FibValue})</span><br>` : ''}
         </div>
     `;
     
